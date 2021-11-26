@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: constraint-mem-demo
+spec:
+  containers:
+  - name: constraints-mem-demo-ctr
+    image: centos:7
+    command: ['sh','-c','/usr/bin/sleep 3600s']
+    resources:
+      limits:
+        memory: "600Mi"
+        cpu: "400m"
+      requests: 
+        memory: "500Mi"
+        cpu: "300m"

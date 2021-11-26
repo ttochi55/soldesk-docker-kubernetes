@@ -1,0 +1,101 @@
+프로메테우스
+- 오픈소스 기반의 시스템 모니터링 솔루션
+- 현재 쿠버네티스의 모니터링툴로서 널리 사용되고 있음 
+
+prometheus: prometheus 서버를 직접 생성해서 사용
+prometheus operator: prometheus operator 를 먼저 설치한다음
+오퍼레이터를 이용하여 프로메테우스 서버를 생성.
+
+prometheus operator 설치방법
+아래와 같이 세가지 방법이 있다.
+
+- prometheous operator
+- kube-prometheus
+- helm chart
+
+* kube-prometheus 
+kube-prometheus 프로메테우스 오퍼레이터와 일련의 매니페스트들을 결합하여
+쿠버네티스 클러스트와 그 위에서 실행 중인 애플리케이션을 모니터링하는 것을 도와준다.
+
+kube-prometheus 패키지에는 다음과 같은 패키지가 포함되어있다.
+
+- The Prometheus Operator
+- Highly available Prometheus
+- Highly available Alertmanager
+- Prometheus node-exporter
+- Prometheus Adapter for Kubernetes Metrics APIs
+- kube-state-metrics
+- Grafana
+
+--------------------------------------------------------------------
+아래 내용은 생략.
+* 프로메테우스를 설치하기전에
+kube-state-metrics 설치
+
+kube-state-metrics
+- kubernetes 네이티브 리소스의 현재 상태를 기반으로 prometheus 형식의 메트릭을 생성.
+- 쿠버네티스 리소스 및 객체에 대한 정보를 수집하여 수행
+
+git clone https://github.com/kubernetes/kube-state-metrics
+$ kubectl apply -f examples/standard
+$ kubectl get pods -o wide
+-------------------------------------------------------------
+
+mkdir -p $HOME/work/monitoring
+cd $HOME/work/monitoring
+git clone https://github.com/coreos/kube-prometheus.git
+cd kube-prometheus
+kubectl create -f manifests/setup
+kubectl create -f manifests
+
+접속
+
+$ kubectl --namespace monitoring port-forward svc/prometheus-k8s 9090
+ 
+query expression 
+
+ex)
+rate(node_cpu_seconds_total{mode="system"}[1m])
+최근1분동안 cpu 사용량의 부하 평균값.
+
+node_filesystem_avail_bytes
+노드의 파일시스템의 사용 가능한 용량
+
+rate(node_network_receive_bytes_total[1m])
+최근1분동안 초당 수신한 네트워크 트래픽의 평균
+
+Alertmanager
+- 서버 메트릭에 어떤 문제가 있으면 알림을 받을수 있도록 해준다.
+- 알림을 보내는 규칙은 prometheus에서 설정.
+
+$ kubectl --namespace monitoring port-forward svc/alertmanager-main 9093
+------------------------------------------
+
+grapana
+
+데이터 소스를 분석, 시각화 하기 위한 오픈소스 솔루션
+$ kubectl --namespace monitoring port-forward svc/grafana 3000
+
+디폴트 사용자 : id: admin , password: admin
+* 처음 접속시 보안을 위해 암호변경을 요구함.
+
+kubectl --namespace monitoring port-forward svc/alertmanager-main 9093
+
+* 외부에서 접속하려면 port-forward 주소에 --address 옵션을 추가해야 한다.
+
+kubectl --namespace monitoring port-forward --address=localhost,x.x.x.x(자신의주소)  svc/alertmanager-main 9093
+
+* 세개의 명령을 한번에 실행하려면 아래처럼 파일을 작성해서 실행하면 됨.
+
+$ vim monitoring-servers.sh
+#! /bin/bash
+kubectl --namespace monitoring port-forward --address=localhost,192.168.100.90 svc/prometheus-k8s 9090 &
+kubectl --namespace monitoring port-forward --address=localhost,192.168.100.90 svc/alertmanager-main 9093 &
+kubectl --namespace monitoring port-forward --address=localhost,192.168.100.90 svc/grafana 3000
+
+* 자신의 주소가 192.168.100.90 이라고 가정.
+
+$ chmod u+x monitoring-servers.sh
+$ ./monitoring-servers.sh
+
+외부에서 웹브라우저로 http://192.168.100.90:9090(3000,9093) 
